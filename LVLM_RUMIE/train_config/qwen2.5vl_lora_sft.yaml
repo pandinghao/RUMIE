@@ -22,7 +22,7 @@ dataloader_num_workers: 16
 ### output
 output_dir: LVLM_RUMIE/saves/Qwen2.5_UMIE
 logging_steps: 10
-save_steps: 1148
+save_steps: 38211
 plot_loss: true
 overwrite_output_dir: true
 save_only_model: false
