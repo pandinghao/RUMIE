@@ -9,11 +9,12 @@ ACE2005-toolkit
 swig
 oneie*
 swig\images_512
-m2e2
+datasets/m2e2
 log
 datasets.zip
 train_datasets
 Qwen
+m2e2_model
 LVLM_RUMIE/saves
 data_process/processed_data
 .vscode
@@ -22,3 +23,11 @@ images_512.zip
 LVLM_RUMIE/saves
 llava-hf
 Qwen
+LVLM_RUMIE/results/*
+LVLM_RUMIE/merge_output/*
+LVLM_RUMIE/results
+LVLM_RUMIE/merge_output
+LVLM_test_datasets/MNRE-V1
+LVLM_test_datasets/MNRE-V2
+LVLM_test_datasets/twitter15
+LVLM_test_datasets/twitter17
