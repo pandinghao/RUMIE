@@ -2,10 +2,10 @@
 #!/home/sda/pandinghao/anaconda3/envs/vlm-r1
 STEP=114633
 MERGE_FLAG=1
-CUDA=1
-MNER_FLAG=1
-MRE_FLAG=1
-MEE_FLAG=1
+CUDA=0
+MNER_FLAG=true
+MRE_FLAG=true
+MEE_FLAG=true
 
 if [ "$MERGE_FLAG" = true ]; then
     DISABLE_VERSION_CHECK=1 CUDA_VISIBLE_DEVICES=${CUDA} llamafactory-cli export \
@@ -39,7 +39,7 @@ if [ "$MRE_FLAG" = true ]; then
         --dataset mre_test \
         --template qwen2_vl \
         --save_name LVLM_RUMIE/results/ori_mre_results/Qwen2.5_UMIE_${STEP}_result.jsonl \
-        --temperature 0.3 \
+        --temperature 0.5 \
         --skip_special_tokens true 
 else
     echo "跳过MRE评估..."
@@ -51,7 +51,7 @@ if [ "$MEE_FLAG" = true ]; then
         --dataset mee_test \
         --template qwen2_vl \
         --save_name LVLM_RUMIE/results/ori_mee_results/Qwen2.5_UMIE_${STEP}_result.jsonl \
-        --temperature 0.3 \
+        --temperature 0.5 \
         --skip_special_tokens true 
 else
     echo "跳过MEE评估..."

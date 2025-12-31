@@ -4,6 +4,10 @@ import argparse
 from typing import Any, Dict, List, Tuple, Optional, Set
 import os
 
+
+# ----------------------------
+# Save
+# ----------------------------
 def save_metrics(out_path: str, mee_res: Dict[str, Any], mner_res: Dict[str, Any], mre_res: Dict[str, Any]):
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     payload = {
@@ -23,6 +27,8 @@ def save_metrics(out_path: str, mee_res: Dict[str, Any], mner_res: Dict[str, Any
     }
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
+
+
 # ----------------------------
 # IO
 # ----------------------------
@@ -63,7 +69,6 @@ def safe_json_loads(x: Any) -> Any:
     s = _strip_code_fence(s)
     s = s.strip()
 
-    # sometimes model outputs leading/trailing text, attempt to extract json array/object
     # try direct loads first
     try:
         return json.loads(s)
@@ -71,7 +76,6 @@ def safe_json_loads(x: Any) -> Any:
         pass
 
     # attempt: find first JSON array/object substring
-    # array
     m = re.search(r"(\[.*\])", s, flags=re.DOTALL)
     if m:
         candidate = m.group(1).strip()
@@ -79,7 +83,7 @@ def safe_json_loads(x: Any) -> Any:
             return json.loads(candidate)
         except Exception:
             pass
-    # object
+
     m = re.search(r"(\{.*\})", s, flags=re.DOTALL)
     if m:
         candidate = m.group(1).strip()
@@ -92,7 +96,7 @@ def safe_json_loads(x: Any) -> Any:
 
 
 # ----------------------------
-# Normalizers
+# Normalizers / Cleaners
 # ----------------------------
 def _lower(x: Any) -> str:
     return str(x).strip().lower()
@@ -106,7 +110,7 @@ def _norm_type(t: str) -> str:
 
 def _norm_rel(r: str) -> str:
     r = str(r).strip()
-    # handle "xxx/yyy" -> yyy (your old logic)
+    # handle "xxx/yyy" -> yyy
     if "/" in r:
         r = r.split("/")[-1]
     r = r.strip("<>").strip()
@@ -120,18 +124,42 @@ def _as_int(x: Any) -> Optional[int]:
         return None
 
 
+def _clean_model_text(s: str) -> str:
+    """
+    Remove model artifacts like <think>...</think>, and role prefixes.
+    Keep only content that may contain labels/predictions.
+    """
+    if not s:
+        return ""
+
+    s = s.replace("\r", "")
+
+    # remove <think> ... </think> blocks
+    s = re.sub(r"<think>.*?</think>", "", s, flags=re.IGNORECASE | re.DOTALL)
+
+    # remove standalone role lines (common prompt formatting)
+    lines: List[str] = []
+    for ln in s.splitlines():
+        t = ln.strip()
+        if not t:
+            continue
+        if t.lower() in {"user", "assistant", "system"}:
+            continue
+        if t.lower() in {"<think>", "</think>"}:
+            continue
+        lines.append(ln)
+
+    return "\n".join(lines).strip()
+
+
 # ----------------------------
 # Task parsers
 # ----------------------------
 # We support two representations:
 # 1) With offsets: (start, end, type) for NER; (start,end,type) for triggers; RE triples uses head/tail spans
-# 2) Without offsets: use surface text as identifier (less strict than the paper, but works if files lack offsets)
+# 2) Without offsets: use surface text as identifier
 
 # ---- NER ----
-# expected possible formats per item label/predict:
-# A) list of dict: [{"start": 0, "end": 4, "type": "person", "text": "John"}, ...]
-# B) list of list/tuple: [[start, end, type], ...] OR [[text, type], ...] OR ["type, text; type, text"]
-# C) string like "location, Texas; location, Oklahoma" (as in your sample)
 def parse_ner(obj: Any) -> Tuple[Set[Tuple], bool]:
     """
     return: (set of entities, has_offset)
@@ -144,20 +172,22 @@ def parse_ner(obj: Any) -> Tuple[Set[Tuple], bool]:
     if obj is None:
         return entities, has_offset
 
-    # if it's a string like: "location, Texas; location, Oklahoma"
+    # string: "location, Texas; location, Oklahoma"
     if isinstance(obj, str):
-        s = obj.strip()
+        s = _clean_model_text(obj)
         if not s:
             return entities, has_offset
         parts = [p.strip() for p in re.split(r"[;\n]+", s) if p.strip()]
         for p in parts:
-            # try "type, text"
             if "," in p:
                 t, txt = p.split(",", 1)
-                entities.add((_lower(txt), _norm_type(t)))
+                t = _norm_type(t)
+                txt = _lower(txt)
+                if t and txt:
+                    entities.add((txt, t))
             else:
-                # fallback: whole chunk as text, unknown type
-                entities.add((_lower(p), "unknown"))
+                # stricter: ignore noisy fragments without comma
+                continue
         return entities, has_offset
 
     # list
@@ -172,11 +202,17 @@ def parse_ner(obj: Any) -> Tuple[Set[Tuple], bool]:
                         entities.add((st, ed, _norm_type(it["type"])))
                         has_offset = True
                 elif ("text" in it and "type" in it):
-                    entities.add((_lower(it["text"]), _norm_type(it["type"])))
+                    txt = _lower(it["text"])
+                    tp = _norm_type(it["type"])
+                    if txt and tp:
+                        entities.add((txt, tp))
                 else:
-                    # best effort
                     if "type" in it and "name" in it:
-                        entities.add((_lower(it["name"]), _norm_type(it["type"])))
+                        txt = _lower(it["name"])
+                        tp = _norm_type(it["type"])
+                        if txt and tp:
+                            entities.add((txt, tp))
+
             elif isinstance(it, (list, tuple)):
                 if len(it) == 3:
                     st = _as_int(it[0]); ed = _as_int(it[1])
@@ -184,41 +220,39 @@ def parse_ner(obj: Any) -> Tuple[Set[Tuple], bool]:
                         entities.add((st, ed, _norm_type(it[2])))
                         has_offset = True
                     else:
-                        # maybe [text, type, ...] weird
-                        entities.add((_lower(it[0]), _norm_type(it[1])))
+                        # maybe [text, type, ...]
+                        txt = _lower(it[0]); tp = _norm_type(it[1])
+                        if txt and tp:
+                            entities.add((txt, tp))
+
                 elif len(it) == 2:
-                    # [text, type] OR [type, text]
                     a, b = it
                     # heuristic: if a looks like a type
                     if str(a).lower() in {"person", "location", "organization", "miscellaneous", "misc"}:
-                        entities.add((_lower(b), _norm_type(a)))
+                        txt = _lower(b); tp = _norm_type(a)
                     else:
-                        entities.add((_lower(a), _norm_type(b)))
-                else:
-                    # ignore
-                    continue
+                        txt = _lower(a); tp = _norm_type(b)
+                    if txt and tp:
+                        entities.add((txt, tp))
+
             elif isinstance(it, str):
-                # same as string chunk
-                chunk = it.strip()
+                chunk = _clean_model_text(it)
                 if not chunk:
                     continue
                 if "," in chunk:
                     t, txt = chunk.split(",", 1)
-                    entities.add((_lower(txt), _norm_type(t)))
+                    t = _norm_type(t); txt = _lower(txt)
+                    if t and txt:
+                        entities.add((txt, t))
                 else:
-                    entities.add((_lower(chunk), "unknown"))
+                    continue
+
         return entities, has_offset
 
-    # unknown
     return entities, has_offset
 
 
 # ---- RE ----
-# expected possible formats:
-# A) list of dict: [{"head": {...}, "tail": {...}, "relation": "member_of"}]
-#   where head/tail might include offsets: {"start":..,"end":..,"type":..} or text
-# B) list of 5-tuples like your old JMERE: [e1, t1, e2, t2, r]
-# C) string like: "WWE <spot> none <spot> PWStream"
 def parse_re(obj: Any) -> Tuple[Set[Tuple], bool]:
     """
     return: (set of relations, has_offset)
@@ -233,10 +267,9 @@ def parse_re(obj: Any) -> Tuple[Set[Tuple], bool]:
 
     # string style with <spot>
     if isinstance(obj, str):
-        s = obj.strip()
+        s = _clean_model_text(obj)
         if not s:
             return rels, has_offset
-        # possibly multiple lines
         lines = [ln.strip() for ln in s.splitlines() if ln.strip()]
         for ln in lines:
             if "<spot>" in ln:
@@ -246,12 +279,9 @@ def parse_re(obj: Any) -> Tuple[Set[Tuple], bool]:
                     r = parts[1]
                     t = parts[2]
                     rels.add((_lower(h), _lower(t), _norm_rel(r)))
-                else:
-                    # fallback
-                    rels.add((_lower(ln), "", "unknown"))
             else:
-                # fallback: no structure
-                rels.add((_lower(ln), "", "unknown"))
+                # stricter: ignore noisy fragments without <spot>
+                continue
         return rels, has_offset
 
     if isinstance(obj, list):
@@ -261,7 +291,7 @@ def parse_re(obj: Any) -> Tuple[Set[Tuple], bool]:
                 head = it.get("head", it.get("h", {}))
                 tail = it.get("tail", it.get("t", {}))
 
-                # head/tail dict may carry offsets
+                # offset style
                 if isinstance(head, dict) and isinstance(tail, dict) and \
                    ("start" in head and "end" in head and "start" in tail and "end" in tail):
                     hs = _as_int(head["start"]); he = _as_int(head["end"])
@@ -281,25 +311,23 @@ def parse_re(obj: Any) -> Tuple[Set[Tuple], bool]:
                 rels.add((_lower(h_text), _norm_type(h_type), _lower(t_text), _norm_type(t_type), _norm_rel(rel)))
 
             elif isinstance(it, (list, tuple)):
-                # 5-tuple style: [e1, t1, e2, t2, r]
                 if len(it) == 5:
                     e1, t1, e2, t2, r = it
                     rels.add((_lower(e1), _norm_type(t1), _lower(e2), _norm_type(t2), _norm_rel(r)))
-                # 3-tuple style: [head, rel, tail]
                 elif len(it) == 3:
                     h, r, t = it
                     rels.add((_lower(h), _lower(t), _norm_rel(r)))
-                else:
-                    continue
+
             elif isinstance(it, str):
-                # line style
-                ln = it.strip()
+                ln = _clean_model_text(it)
+                if not ln:
+                    continue
                 if "<spot>" in ln:
                     parts = [p.strip() for p in ln.split("<spot>")]
                     if len(parts) >= 3:
                         rels.add((_lower(parts[0]), _lower(parts[2]), _norm_rel(parts[1])))
                 else:
-                    rels.add((_lower(ln), "", "unknown"))
+                    continue
 
         return rels, has_offset
 
@@ -307,10 +335,6 @@ def parse_re(obj: Any) -> Tuple[Set[Tuple], bool]:
 
 
 # ---- ED (Event Detection) ----
-# expected possible formats:
-# A) list of dict: [{"trigger": {"start":..,"end":..,"text":..}, "event_type":"Conflict:Attack"}]
-# B) list of list/tuple: [[start,end,event_type], ...] OR [[trigger_text,event_type], ...]
-# C) string like: "Justice:Arrest-Jail, take; Conflict:Attack, killing"
 def parse_ed(obj: Any) -> Tuple[Set[Tuple], bool]:
     """
     return: (set of triggers, has_offset)
@@ -324,18 +348,22 @@ def parse_ed(obj: Any) -> Tuple[Set[Tuple], bool]:
         return triggers, has_offset
 
     if isinstance(obj, str):
-        s = obj.strip()
+        s = _clean_model_text(obj)
         if not s:
             return triggers, has_offset
-        # format: "EventType, trigger; EventType, trigger"
+
         parts = [p.strip() for p in re.split(r"[;\n]+", s) if p.strip()]
         for p in parts:
             if "," in p:
                 et, trig = p.split(",", 1)
-                triggers.add((_lower(trig), _norm_type(et)))
+                et = _norm_type(et)
+                trig = _lower(trig)
+                if et and trig:
+                    triggers.add((trig, et))
             else:
-                # only event type?
-                triggers.add(("", _norm_type(p)))
+                # stricter: ignore fragments without "event_type, trigger"
+                continue
+
         return triggers, has_offset
 
     if isinstance(obj, list):
@@ -350,12 +378,15 @@ def parse_ed(obj: Any) -> Tuple[Set[Tuple], bool]:
                         triggers.add((st, ed, _norm_type(et)))
                         has_offset = True
                         continue
-                # text trigger
+
                 if isinstance(tri, dict):
                     trig_text = tri.get("text", "")
                 else:
                     trig_text = tri if tri is not None else ""
-                triggers.add((_lower(trig_text), _norm_type(et)))
+                trig_text = _lower(trig_text)
+                et_norm = _norm_type(et)
+                if trig_text and et_norm:
+                    triggers.add((trig_text, et_norm))
 
             elif isinstance(it, (list, tuple)):
                 if len(it) == 3:
@@ -364,15 +395,26 @@ def parse_ed(obj: Any) -> Tuple[Set[Tuple], bool]:
                         triggers.add((st, ed, _norm_type(it[2])))
                         has_offset = True
                     else:
-                        # maybe [trigger_text, event_type, ...]
-                        triggers.add((_lower(it[0]), _norm_type(it[1])))
+                        txt = _lower(it[0]); tp = _norm_type(it[1])
+                        if txt and tp:
+                            triggers.add((txt, tp))
                 elif len(it) == 2:
-                    triggers.add((_lower(it[0]), _norm_type(it[1])))
+                    txt = _lower(it[0]); tp = _norm_type(it[1])
+                    if txt and tp:
+                        triggers.add((txt, tp))
+
             elif isinstance(it, str):
-                ln = it.strip()
+                ln = _clean_model_text(it)
+                if not ln:
+                    continue
                 if "," in ln:
                     et, trig = ln.split(",", 1)
-                    triggers.add((_lower(trig), _norm_type(et)))
+                    et = _norm_type(et); trig = _lower(trig)
+                    if et and trig:
+                        triggers.add((trig, et))
+                else:
+                    continue
+
         return triggers, has_offset
 
     return triggers, has_offset
@@ -397,7 +439,7 @@ def eval_file(
     task: "ner" | "re" | "ed"
     strict_offset_required:
       - True: if any sample lacks offsets in either gold or pred, count as format wrong and skip
-      - False: allow fallback to text-based matching (will be less strict than paper if offsets missing)
+      - False: allow fallback to text-based matching
     """
     data = load_jsonl(file_path)
     format_wrong = 0
@@ -415,7 +457,6 @@ def eval_file(
         try:
             gold_obj = safe_json_loads(gold_raw)
         except Exception:
-            # some files store label as plain string already
             gold_obj = gold_raw
 
         try:
@@ -435,11 +476,10 @@ def eval_file(
                 pred_set, pred_has_off = parse_ed(pred_obj)
             else:
                 raise ValueError(f"Unknown task: {task}")
-        except Exception as e:
+        except Exception:
             format_wrong += 1
             continue
 
-        # decide matching representation
         if gold_has_off and pred_has_off:
             used_offset += 1
         else:
@@ -468,6 +508,7 @@ def eval_file(
         "num_samples": len(data),
         "strict_offset_required": strict_offset_required,
     }
+
 
 def missing_result(file_path: str, task: str, strict_offset_required: bool) -> Dict[str, Any]:
     return {
@@ -505,24 +546,25 @@ def safe_eval_file(file_path: str, task: str, strict_offset_required: bool) -> D
         r = missing_result(file_path, task, strict_offset_required)
         r["error"] = f"Eval error: {repr(e)}"
         return r
+
+
 def pretty_print(res: Dict[str, Any], name: str):
     print("=" * 80)
-    print(f"[{name}]  task={res['task']}")
-    print(f"file: {res['file']}")
+    print(f"[{name}]  task={res.get('task')}")
+    print(f"file: {res.get('file')}")
     if res.get("missing_file", False):
         print(f"WARNING: {res.get('error', 'missing file')}")
-    print(f"samples: {res['num_samples']}")
-    print(f"correct: {res['correct']}, pred: {res['pred']}, gold: {res['gold']}")
-    print(f"format_wrong: {res['format_wrong']}")
-    print(f"used_offset_samples: {res['used_offset_samples']}")
-    print(f"used_text_fallback_samples: {res['used_text_fallback_samples']}")
-    print(f"Micro Precision: {res['micro_precision']:.4f}")
-    print(f"Micro Recall:    {res['micro_recall']:.4f}")
-    print(f"Micro F1:        {res['micro_f1']:.4f}")
-    if res["used_text_fallback_samples"] > 0:
+    print(f"samples: {res.get('num_samples', 0)}")
+    print(f"correct: {res.get('correct', 0)}, pred: {res.get('pred', 0)}, gold: {res.get('gold', 0)}")
+    print(f"format_wrong: {res.get('format_wrong', 0)}")
+    print(f"used_offset_samples: {res.get('used_offset_samples', 0)}")
+    print(f"used_text_fallback_samples: {res.get('used_text_fallback_samples', 0)}")
+    print(f"Micro Precision: {res.get('micro_precision', 0.0):.4f}")
+    print(f"Micro Recall:    {res.get('micro_recall', 0.0):.4f}")
+    print(f"Micro F1:        {res.get('micro_f1', 0.0):.4f}")
+    if res.get("used_text_fallback_samples", 0) > 0:
         print("NOTE: Some samples lack offsets; fell back to text-based matching (less strict than paper).")
     print("=" * 80)
-
 
 
 def main():
@@ -543,7 +585,6 @@ def main():
     )
     args = parser.parse_args()
 
-    # 关键修改：用 safe_eval_file，缺文件也返回占位结果而不是崩溃退出
     mee_res = safe_eval_file(args.mee_file, task="ed", strict_offset_required=args.strict_offset)
     mner_res = safe_eval_file(args.mner_file, task="ner", strict_offset_required=args.strict_offset)
     mre_res = safe_eval_file(args.mre_file, task="re", strict_offset_required=args.strict_offset)
@@ -555,6 +596,7 @@ def main():
     if args.out_file:
         save_metrics(args.out_file, mee_res, mner_res, mre_res)
         print(f"[SAVED] metrics -> {args.out_file}")
+
 
 if __name__ == "__main__":
     main()

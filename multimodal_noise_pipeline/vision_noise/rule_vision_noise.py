@@ -40,11 +40,11 @@ def apply_jpeg_compression(img, quality=30):
 # ===================== 批量处理 JSONL 中的全部图片 =====================
 if __name__ == "__main__":
     
-    jsonl_path = "data_process/processed_data/entity/twitter17/test.jsonl"
+    jsonl_path = "data_process/processed_data/event/m2e2_test_ED.jsonl"
 
     # 你的输出目录
-    output_dir = "rumie_datasets/twitter17/rule_vision_noise"
-    image_folder = "datasets/twitter17_data/twitter17_images"
+    output_dir = "rumie_datasets/m2e2/rule_vision_noise"
+    image_folder = "datasets/m2e2/m2e2_rawdata/image/image"
 
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(output_dir+"/gaussian_noise", exist_ok=True)
@@ -70,7 +70,7 @@ if __name__ == "__main__":
         # 应用失真
         img_gauss_noise = add_gaussian_noise(img, mean=0, std=100)
         img_jpeg = apply_jpeg_compression(img, quality=5)
-        img_lowres = apply_low_resolution(img, scale=0.05)
+        img_lowres = apply_low_resolution(img, scale=0.01)
         img_color_shift = apply_color_shift(img, shift_b=-100, shift_g=-100, shift_r=50)
 
 

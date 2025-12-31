@@ -1,7 +1,7 @@
 change_context_event_prompt = '''
 The above is an Event Detection data entry, where the "sentence" contains the sentence information, and the "events" contains the event trigger information.\
-The sentence containing 1-4 [MASK] tokens. These [MASK] tokens mask certain words, with each [MASK] token potentially masking one or more words. \
-You need to generate some challenging words to replace these [MASK] tokens to create a difficult sentence. \
+The sentence containing 4-8 [MASK] tokens. These [MASK] tokens mask certain words, with each [MASK] token potentially masking one or more words. \
+You need to generate some challenging words to replace these [MASK] tokens, preferably ones that conflict with the image content or make the sentence more difficult for event detection. \
 The generated words can not contain any event triger information. \
 You need to provide predictions for each [MASK] token. Please output in the following format, without any additional content: {"sentence": "", "events": []}, \
 where "sentence" should be the changed sentence and follow the original token list format, and "events" should contain the original event label information.
@@ -94,8 +94,8 @@ def convert_event_jsonl(
             event_label = obj['golden-event-mentions']
             new_obj = mask_sample_keep_schema(
                 obj,
-                min_masks=1,
-                max_masks=4,
+                min_masks=4,
+                max_masks=8,
                 seed=(seed + line_no) if seed is not None else None,
                 update_text=True,
             )
@@ -125,7 +125,7 @@ def get_cot_data_from_api(data):
         for attempt in range(1, max_retries + 1):
             try:
                 completion = client.chat.completions.create(
-                    model="gpt-5.1-chat-latest",
+                    model="gpt-5-chat-latest",
                     messages=[
                         {
                             "role": "user",
@@ -134,7 +134,7 @@ def get_cot_data_from_api(data):
                             ]
                         }
                     ],
-                    temperature=0.5,
+                    temperature=0.8,
                     logprobs=True
                 )
                 response = completion.choices[0].message.content
