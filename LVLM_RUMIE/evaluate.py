@@ -193,11 +193,11 @@ def vllm_infer(
         "trust_remote_code": True,
         "dtype": model_args.infer_dtype,
         "max_model_len": cutoff_len + max_new_tokens,
-        "tensor_parallel_size": 2,
+        "tensor_parallel_size": 1,
         "pipeline_parallel_size": pipeline_parallel_size,
         "disable_log_stats": True,
         "enable_lora": model_args.adapter_name_or_path is not None,
-        "gpu_memory_utilization": 0.5,
+        "gpu_memory_utilization": 0.8,
     }
 
     if isinstance(model_args.vllm_config, dict):
@@ -225,7 +225,7 @@ def parse_args():
     parser.add_argument('--dataset', type=str, default="alpaca_en_demo")
     parser.add_argument('--dataset_dir', type=str, default="./")
     parser.add_argument('--template', type=str, default="default")
-    parser.add_argument('--cutoff_len', type=int, default=4096)
+    parser.add_argument('--cutoff_len', type=int, default=3500)
     parser.add_argument('--max_samples', type=int, default=None)
     parser.add_argument('--vllm_config', type=str, default="{}")
     parser.add_argument('--save_name', type=str, default="generated_predictions.jsonl")

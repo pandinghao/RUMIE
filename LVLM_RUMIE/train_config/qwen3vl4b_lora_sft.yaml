@@ -1,5 +1,5 @@
 ### model
-model_name_or_path: Qwen/Qwen2.5-VL-7B-Instruct
+model_name_or_path: Qwen/Qwen3-VL-4B-Instruct
 trust_remote_code: true
 
 ### method
@@ -12,7 +12,7 @@ lora_target: all
 
 ### dataset
 dataset: UMIE_train
-template: qwen2_vl
+template: qwen3_vl
 cutoff_len: 2048
 max_samples: 10000000
 overwrite_cache: true
@@ -20,7 +20,7 @@ preprocessing_num_workers: 1
 dataloader_num_workers: 16
 
 ### output
-output_dir: LVLM_RUMIE/saves/Qwen2.5_UMIE
+output_dir: LVLM_RUMIE/saves/Qwen3_VL_4B_UMIE
 logging_steps: 10
 save_steps: 38211
 plot_loss: true

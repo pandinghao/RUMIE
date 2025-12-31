@@ -1,14 +1,6 @@
+import argparse
 import json
 import os
-
-# 输入：你已经处理好的 m2e2 event json
-input_file = "data_process/processed_data/event/m2e2_test_ED.json"
-
-# 输出：VOA 风格
-output_file = "LVLM_test_datasets/m2e2/test.json"
-image_base_dir = "datasets/m2e2/m2e2_rawdata/image/image"
-
-os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
 INSTRUCTION = (
     "Please extract the following event type: "
@@ -17,9 +9,9 @@ INSTRUCTION = (
     "Transaction:Transfer-Money."
 )
 
-def process_voa_style_to_messages(input_path: str, output_path: str):
+def process_voa_style_to_messages(input_path: str, output_path: str, image_base_dir: str):
     with open(input_path, "r", encoding="utf-8") as f:
-        data = json.load(f)  # 期望是一个 list
+        data = json.load(f)  # expected: list
 
     results = []
     for item in data:
@@ -27,7 +19,7 @@ def process_voa_style_to_messages(input_path: str, output_path: str):
         label = item.get("label", "")
         image_id = item.get("image_id", "")
 
-        # 基本校验：没有 label 或 image_id 的样本直接跳过（你也可以改成保留）
+        # Skip samples without label or image_id (adjust if you want to keep them)
         if not label or not image_id:
             continue
 
@@ -43,7 +35,43 @@ def process_voa_style_to_messages(input_path: str, output_path: str):
 
         results.append(sample)
 
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
 
-process_voa_style_to_messages(input_file, output_file)
+
+def build_argparser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Convert processed M2E2 event json into LVLM (VOA-style) message format."
+    )
+    parser.add_argument(
+        "--input_file",
+        default="data_process/processed_data/event/m2e2_test_ED.json",
+        help="Path to processed M2E2 event json (default: %(default)s)"
+    )
+    parser.add_argument(
+        "--output_file",
+        default="LVLM_test_datasets/m2e2/test.json",
+        help="Output path for VOA-style json (default: %(default)s)"
+    )
+    parser.add_argument(
+        "--image_base_dir",
+        default="datasets/m2e2/m2e2_rawdata/image/image",
+        help="Base directory for images; image_id will be joined to this path (default: %(default)s)"
+    )
+    return parser
+
+
+def main():
+    parser = build_argparser()
+    args = parser.parse_args()
+
+    process_voa_style_to_messages(
+        input_path=args.input_file,
+        output_path=args.output_file,
+        image_base_dir=args.image_base_dir
+    )
+
+
+if __name__ == "__main__":
+    main()

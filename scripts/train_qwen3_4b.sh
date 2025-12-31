@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=1 llamafactory-cli train LVLM_RUMIE/train_config/qwen3vl4b_lora_sft.yaml

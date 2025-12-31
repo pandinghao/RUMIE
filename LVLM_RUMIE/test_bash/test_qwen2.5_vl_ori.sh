@@ -1,11 +1,11 @@
 
 #!/home/sda/pandinghao/anaconda3/envs/vlm-r1
-STEP=38211
-MERGE_FLAG=true
-CUDA=0
-MNER_FLAG=true
-MRE_FLAG=true
-MEE_FLAG=true
+STEP=114633
+MERGE_FLAG=1
+CUDA=1
+MNER_FLAG=1
+MRE_FLAG=1
+MEE_FLAG=1
 
 if [ "$MERGE_FLAG" = true ]; then
     DISABLE_VERSION_CHECK=1 CUDA_VISIBLE_DEVICES=${CUDA} llamafactory-cli export \
@@ -16,7 +16,7 @@ if [ "$MERGE_FLAG" = true ]; then
         --export_dir "LVLM_RUMIE/merge_output/Qwen2.5_UMIE_${STEP}" \
         --export_size 5 \
         --export_device "cpu" \
-        --export_legacy_format false
+        --export_legacy_format falses
 else
     echo "跳过模型合并..."
 fi
@@ -44,6 +44,7 @@ if [ "$MRE_FLAG" = true ]; then
 else
     echo "跳过MRE评估..."
 fi
+
 if [ "$MEE_FLAG" = true ]; then
     VLLM_ALLOW_LONG_MAX_MODEL_LEN=1  DISABLE_VERSION_CHECK=1 python LVLM_RUMIE/evaluate.py \
         --model_name_or_path LVLM_RUMIE/merge_output/Qwen2.5_UMIE_${STEP} \

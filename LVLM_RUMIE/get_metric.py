@@ -2,8 +2,27 @@ import json
 import re
 import argparse
 from typing import Any, Dict, List, Tuple, Optional, Set
+import os
 
-
+def save_metrics(out_path: str, mee_res: Dict[str, Any], mner_res: Dict[str, Any], mre_res: Dict[str, Any]):
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    payload = {
+        "mee": mee_res,
+        "mner": mner_res,
+        "mre": mre_res,
+        "summary": {
+            "mee_micro_f1": mee_res.get("micro_f1", 0.0),
+            "mner_micro_f1": mner_res.get("micro_f1", 0.0),
+            "mre_micro_f1": mre_res.get("micro_f1", 0.0),
+            "avg_micro_f1": (
+                mee_res.get("micro_f1", 0.0) +
+                mner_res.get("micro_f1", 0.0) +
+                mre_res.get("micro_f1", 0.0)
+            ) / 3.0,
+        }
+    }
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
 # ----------------------------
 # IO
 # ----------------------------
@@ -450,11 +469,48 @@ def eval_file(
         "strict_offset_required": strict_offset_required,
     }
 
+def missing_result(file_path: str, task: str, strict_offset_required: bool) -> Dict[str, Any]:
+    return {
+        "file": file_path,
+        "task": task,
+        "missing_file": True,
+        "error": f"File not found: {file_path}",
+        "correct": 0,
+        "pred": 0,
+        "gold": 0,
+        "format_wrong": 0,
+        "used_offset_samples": 0,
+        "used_text_fallback_samples": 0,
+        "micro_precision": 0.0,
+        "micro_recall": 0.0,
+        "micro_f1": 0.0,
+        "num_samples": 0,
+        "strict_offset_required": strict_offset_required,
+    }
 
+
+def safe_eval_file(file_path: str, task: str, strict_offset_required: bool) -> Dict[str, Any]:
+    """
+    Evaluate if file exists; otherwise return a placeholder result.
+    If evaluation throws unexpected error, also return placeholder with error message.
+    """
+    if not file_path or not os.path.exists(file_path):
+        return missing_result(file_path, task, strict_offset_required)
+
+    try:
+        res = eval_file(file_path, task=task, strict_offset_required=strict_offset_required)
+        res["missing_file"] = False
+        return res
+    except Exception as e:
+        r = missing_result(file_path, task, strict_offset_required)
+        r["error"] = f"Eval error: {repr(e)}"
+        return r
 def pretty_print(res: Dict[str, Any], name: str):
     print("=" * 80)
     print(f"[{name}]  task={res['task']}")
     print(f"file: {res['file']}")
+    if res.get("missing_file", False):
+        print(f"WARNING: {res.get('error', 'missing file')}")
     print(f"samples: {res['num_samples']}")
     print(f"correct: {res['correct']}, pred: {res['pred']}, gold: {res['gold']}")
     print(f"format_wrong: {res['format_wrong']}")
@@ -468,23 +524,37 @@ def pretty_print(res: Dict[str, Any], name: str):
     print("=" * 80)
 
 
+
 def main():
     parser = argparse.ArgumentParser("Evaluate MEE/MNER/MRE jsonl results (micro-F1, span-based when available)")
     parser.add_argument("--mee_file", type=str, required=True, help="ED/MEE result jsonl")
     parser.add_argument("--mner_file", type=str, required=True, help="NER result jsonl")
     parser.add_argument("--mre_file", type=str, required=True, help="RE result jsonl")
-    parser.add_argument("--strict_offset", action="store_true",
-                        help="Require offsets for span-based eval; otherwise fallback to text-based when offsets missing.")
+    parser.add_argument(
+        "--strict_offset",
+        action="store_true",
+        help="Require offsets for span-based eval; otherwise fallback to text-based when offsets missing."
+    )
+    parser.add_argument(
+        "--out_file",
+        type=str,
+        default="",
+        help="Optional path to save metrics as JSON (default: empty, do not save)."
+    )
     args = parser.parse_args()
 
-    mee_res = eval_file(args.mee_file, task="ed", strict_offset_required=args.strict_offset)
-    mner_res = eval_file(args.mner_file, task="ner", strict_offset_required=args.strict_offset)
-    mre_res = eval_file(args.mre_file, task="re", strict_offset_required=args.strict_offset)
+    # 关键修改：用 safe_eval_file，缺文件也返回占位结果而不是崩溃退出
+    mee_res = safe_eval_file(args.mee_file, task="ed", strict_offset_required=args.strict_offset)
+    mner_res = safe_eval_file(args.mner_file, task="ner", strict_offset_required=args.strict_offset)
+    mre_res = safe_eval_file(args.mre_file, task="re", strict_offset_required=args.strict_offset)
 
     pretty_print(mee_res, "MEE/ED")
     pretty_print(mner_res, "MNER/NER")
     pretty_print(mre_res, "MRE/RE")
 
+    if args.out_file:
+        save_metrics(args.out_file, mee_res, mner_res, mre_res)
+        print(f"[SAVED] metrics -> {args.out_file}")
 
 if __name__ == "__main__":
     main()
