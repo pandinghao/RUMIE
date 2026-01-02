@@ -29,11 +29,11 @@ DATASETS_MNER=(
   "mner_rule_vision_gaussian_noise"
   "mner_rule_vision_jpeg_compression"
   "mner_rule_vision_low_resolusion"
-  "mner_Image-Side-Contradictory_Perturbation_clip"
+  "mner_rule_vision_Image_Side_Contradictory_Perturbation_clip"
   "mner_text_change_context"
   "mner_text_extend_sentence"
   "mner_text_replace_entity"
-  "mner_Text-Side_Contradictory_Perturbation"
+  "mner_text_Text_Side_Contradictory_Perturbation"
 )
 
 # --- MRE ---
@@ -42,11 +42,11 @@ DATASETS_MRE=(
   "mre_rule_vision_gaussian_noise"
   "mre_rule_vision_jpeg_compression"
   "mre_rule_vision_low_resolusion"
-  "mre_Image-Side-Contradictory_Perturbation_clip"
+  "mre_rule_vision_Image_Side_Contradictory_Perturbation_clip"
   "mre_text_change_context"
   "mre_text_extend_sentence"
   "mre_text_replace_triple"
-  "mre_Text-Side_Contradictory_Perturbation"
+  "mre_text_Text_Side_Contradictory_Perturbation"
 )
 
 # --- MEE (m2e2) ---
@@ -55,10 +55,10 @@ DATASETS_MEE=(
   "mee_rule_vision_gaussian_noise"
   "mee_rule_vision_jpeg_compression"
   "mee_rule_vision_low_resolusion"
-  "mee_Image-Side-Contradictory_Perturbation_clip"
+  "mee_rule_vision_Image_Side_Contradictory_Perturbation_clip"
   "mee_text_change_context"
   "mee_text_extend_sentence"
-  "mee_Text-Side_Contradictory_Perturbation"
+  "mee_text_Text_Side_Contradictory_Perturbation"
 )
 # =====================
 
@@ -125,10 +125,10 @@ fi
 # 并且对每个扰动，汇总一次三任务指标（若该任务存在该扰动）
 
 # 统一扰动列表（用于汇总）
-PERTS_RULE_VISION=("color_shift" "gaussian_noise" "jpeg_compression" "low_resolusion" "Image-Side-Contradictory_Perturbation_clip")
-#PERTS_RULE_VISION=()
-PERTS_TEXT=("change_context" "extend_sentence" "replace_entity" "replace_triple" "Text-Side-Contradictory_Perturbation")
-#PERTS_TEXT=("replace_entity" "replace_triple")
+#PERTS_RULE_VISION=("color_shift" "gaussian_noise" "jpeg_compression" "low_resolusion" "Image_Side_Contradictory_Perturbation_clip")
+PERTS_RULE_VISION=("Image_Side_Contradictory_Perturbation_clip")
+#PERTS_TEXT=("change_context" "extend_sentence" "replace_entity" "replace_triple" "Text_Side_Contradictory_Perturbation")
+PERTS_TEXT=("Text_Side_Contradictory_Perturbation")
 # Helper: find dataset key from arrays
 find_dataset_key () {
   local target="$1"; shift

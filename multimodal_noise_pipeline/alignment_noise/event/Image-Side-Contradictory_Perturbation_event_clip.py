@@ -76,7 +76,7 @@ def preprocess_image_to_size(image_path: str, output_path: str, target_size=(102
         img = img.resize(target_size, Image.BICUBIC)
         img.save(output_path, format="PNG")
 
-def generate_confusing_trigger_llm(event_label: str, context: str, max_retries: int = 10) -> Optional[str]:
+def generate_confusing_trigger_llm(event_label: str, context: str, max_retries: int = 20) -> Optional[str]:
     prompt = TRIGGER_PROMPT.format(
         event_label=event_label,
         context=context[:900]
@@ -90,13 +90,14 @@ def generate_confusing_trigger_llm(event_label: str, context: str, max_retries: 
             )
             trig = resp.choices[0].message.content.strip()
             if not trig:
+                print(f"trigger生成失败开启第{_+1}次重试")
                 continue
-            if "\n" in trig:
-                continue
+            trig = trig.strip() 
             return trig
-        except Exception:
+        except Exception as e:
+            print(f"trigger生成失败开启第{_+1}次重试: {e}")
             time.sleep(0.5)
-    return None
+    return ""
 # =========================================================
 # 4. MASK GENERATION BASED ON ENTITY SIMILARITY
 # =========================================================
@@ -143,13 +144,13 @@ ONLY modify the content inside the masked region.
 
 The area outside the mask MUST remain completely unchanged, including all people, objects, colors, lighting, and composition.
 
-Inside the masked region, add a small but realistic visual element that strongly suggests the event trigger:
+Inside the masked region, add a s realistic visual element that strongly suggests the event trigger:
 "{trigger_phrase}"
 and is consistent with the event label "{event_label}" and the photo style.
 
 Important constraints:
-- Do NOT add any text, captions, subtitles, readable letters, numbers, or watermarks.
-- Do NOT add large new subjects; keep the added element localized and plausible (e.g., an object, a gesture, a small scene cue).
+- Do NOT add any text.
+- keep the added element localized and plausible (e.g., an object, a gesture, a small scene cue).
 - The added element should look like part of the original photograph.
 
 Do not alter anything outside the masked area.
@@ -210,12 +211,9 @@ def run_image_only_context_confusion(input_jsonl: str, num_threads: int):
             context = item.get("text", "")
             image_name = item.get("image_id")
 
-            if not image_name or not context or not label:
-                continue
+            
 
             image_path = os.path.join(IMAGE_ROOT, image_name)
-            if not os.path.exists(image_path):
-                continue
 
             confuse_trigger = generate_confusing_trigger_llm(event_label=label, context=context)
             if confuse_trigger is None:
@@ -249,5 +247,5 @@ def run_image_only_context_confusion(input_jsonl: str, num_threads: int):
 # =========================================================
 if __name__ == "__main__":
     INPUT_JSONL = "data_process/processed_data/event/m2e2_test_ED.jsonl"
-    NUM_THREADS = 10
+    NUM_THREADS = 30
     run_image_only_context_confusion(input_jsonl=INPUT_JSONL, num_threads=NUM_THREADS)
