@@ -86,7 +86,7 @@ def vllm_infer(
     dataset: str = "alpaca_en_demo",
     dataset_dir: str = "./",
     template: str = "default",
-    cutoff_len: int = 3000,
+    cutoff_len: int = 10000,
     max_samples: Optional[int] = None,
     vllm_config: str = "{}",
     save_name: str = "generated_predictions.jsonl",
@@ -107,8 +107,8 @@ def vllm_infer(
 
     # vLLM / LLaMA-Factory 版本约束
     check_version("vllm>=0.4.3,<=0.7.3")
-    if pipeline_parallel_size > get_device_count():
-        raise ValueError("Pipeline parallel size should be smaller than the number of gpus.")
+    #if pipeline_parallel_size > get_device_count():
+        #raise ValueError("Pipeline parallel size should be smaller than the number of gpus.")
 
     model_args, data_args, _, generating_args = get_infer_args(
         dict(
@@ -225,7 +225,7 @@ def parse_args():
     parser.add_argument('--dataset', type=str, default="alpaca_en_demo")
     parser.add_argument('--dataset_dir', type=str, default="./")
     parser.add_argument('--template', type=str, default="default")
-    parser.add_argument('--cutoff_len', type=int, default=3500)
+    parser.add_argument('--cutoff_len', type=int, default=5000)
     parser.add_argument('--max_samples', type=int, default=None)
     parser.add_argument('--vllm_config', type=str, default="{}")
     parser.add_argument('--save_name', type=str, default="generated_predictions.jsonl")

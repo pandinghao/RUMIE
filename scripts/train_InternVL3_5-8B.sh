@@ -1,0 +1,1 @@
+DISABLE_VERSION_CHECK=1 llamafactory-cli train LVLM_RUMIE/train_config/InternVL3_5-8B_lora_sft.yaml
