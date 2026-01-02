@@ -3,26 +3,26 @@ set -euo pipefail
 
 # ================= 配置区（按需修改） =================
 PY_SCRIPT="LVLM_test_datasets/convert_mner.py"   # 你的Python脚本路径（就是你贴的那份）
-OUT_BASE_DIR="LVLM_test_datasets/twitter15"
+OUT_BASE_DIR="LVLM_test_datasets/twitter17"
 
 # 原始图片目录（text_noise 用）
-ORIG_IMAGE_DIR="datasets/twitter15_data/twitter15_images"
+ORIG_IMAGE_DIR="datasets/twitter17_data/twitter17_images"
 
 # text_noise 输入根目录：每个子目录一个扰动
-TEXT_NOISE_BASE="rumie_datasets/twitter15/text_noise"
+TEXT_NOISE_BASE="rumie_datasets/twitter17/text_noise"
 TEXT_INPUT_BASENAME="test.jsonl"
 
 # vision_noise 图片根目录：每个子目录一个扰动
 # 注意：这里我按你前面 MNRE 的命名写成 rule_vision_noise；
 # 若你的 Twitter17 视觉扰动目录名不同（如 vision_noise），改这里即可。
-VISION_NOISE_BASE="rumie_datasets/twitter15/rule_vision_noise"
+VISION_NOISE_BASE="rumie_datasets/twitter17/rule_vision_noise"
 
 # vision_noise 的输入文本：通常用干净测试集（不带 text_noise）
 # 你需要把它改成你真实的干净 test.jsonl 路径
-CLEAN_INPUT_FILE="data_process/processed_data/entity/twitter15/test.jsonl"
+CLEAN_INPUT_FILE="data_process/processed_data/entity/twitter17/test.jsonl"
 # 若不想自动扫描目录，可手动指定扰动类型数组；留空则自动扫描
-TEXT_PERTS=()     # e.g., ("change_context" "swap_entity")
-VISION_PERTS=()   # e.g., ("color_shift" "gaussian_noise")
+TEXT_PERTS=(Text-Side_Contradictory_Perturbation)     # e.g., ("change_context" "swap_entity")
+VISION_PERTS=(Image-Side-Contradictory_Perturbation_clip)   # e.g., ("color_shift" "gaussian_noise")
 # =====================================================
 
 
