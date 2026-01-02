@@ -1,1 +1,1 @@
-CUDA_VISIBLE_DEVICES=1 llamafactory-cli train LVLM_RUMIE/train_config/qwen3vl8b_lora_sft.yaml
+DISABLE_VERSION_CHECK=1 llamafactory-cli train LVLM_RUMIE/train_config/qwen3vl8b_lora_sft.yaml
