@@ -32,4 +32,7 @@ LVLM_test_datasets/MNRE-V2
 LVLM_test_datasets/twitter15
 LVLM_test_datasets/twitter17
 LLaMA-Factory
+OpenGVLab/InternVL3_5-8B
+OpenGVLab/InternVL2_5-8B
+OpenGVLab/InternVL2_5-4B
 openai/clip-vit-base-patch32
