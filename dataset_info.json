@@ -193,5 +193,43 @@
     "formatting": "sharegpt",
     "columns": { "messages": "messages", "images": "images" },
     "tags": { "role_tag": "role", "content_tag": "content", "user_tag": "user", "assistant_tag": "assistant" }
+  },
+  "mner_rule_vision_Image_Side_Contradictory_Perturbation_clip": {
+    "file_name": "LVLM_test_datasets/mner/rule_vision_noise/Image-Side-Contradictory_Perturbation_clip/test.json",
+    "formatting": "sharegpt",
+    "columns": { "messages": "messages", "images": "images" },
+    "tags": { "role_tag": "role", "content_tag": "content", "user_tag": "user", "assistant_tag": "assistant" }
+  },
+   "mee_rule_vision_Image_Side_Contradictory_Perturbation_clip": {
+    "file_name": "LVLM_test_datasets/m2e2/rule_vision_noise/Image-Side-Contradictory_Perturbation_clip/test.json",
+    "formatting": "sharegpt",
+    "columns": { "messages": "messages", "images": "images" },
+    "tags": { "role_tag": "role", "content_tag": "content", "user_tag": "user", "assistant_tag": "assistant" }
+  },
+   "mre_rule_vision_Image_Side_Contradictory_Perturbation_clip": {
+    "file_name": "LVLM_test_datasets/mnre/rule_vision_noise/Image-Side-Contradictory_Perturbation_clip/test.json",
+    "formatting": "sharegpt",
+    "columns": { "messages": "messages", "images": "images" },
+    "tags": { "role_tag": "role", "content_tag": "content", "user_tag": "user", "assistant_tag": "assistant" }
+  },
+  "mner_text_Text_Side_Contradictory_Perturbation": {
+    "file_name": "LVLM_test_datasets/mner/text_noise/Text-Side_Contradictory_Perturbation/test.json",
+    "formatting": "sharegpt",
+    "columns": { "messages": "messages", "images": "images" },
+    "tags": { "role_tag": "role", "content_tag": "content", "user_tag": "user", "assistant_tag": "assistant" }
+  },
+  "mre_text_Text_Side_Contradictory_Perturbation": {
+    "file_name": "LVLM_test_datasets/mnre/text_noise/Text-Side_Contradictory_Perturbation/test.json",
+    "formatting": "sharegpt",
+    "columns": { "messages": "messages", "images": "images" },
+    "tags": { "role_tag": "role", "content_tag": "content", "user_tag": "user", "assistant_tag": "assistant" }
+  },
+
+  "mee_text_Text_Side_Contradictory_Perturbation": {
+    "file_name": "LVLM_test_datasets/m2e2/text_noise/Text-Side_Contradictory_Perturbation/test.json",
+    "formatting": "sharegpt",
+    "columns": { "messages": "messages", "images": "images" },
+    "tags": { "role_tag": "role", "content_tag": "content", "user_tag": "user", "assistant_tag": "assistant" }
   }
+
 }

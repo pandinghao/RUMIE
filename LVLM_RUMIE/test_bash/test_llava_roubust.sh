@@ -9,18 +9,18 @@ MNER_FLAG=true
 MRE_FLAG=true
 MEE_FLAG=true
 
-BASE_MODEL="Qwen/Qwen2.5-VL-7B-Instruct"
-ADAPTER_DIR="LVLM_RUMIE/saves/Qwen2.5_UMIE/checkpoint-${STEP}"
-MERGED_DIR="LVLM_RUMIE/merge_output/Qwen2.5_UMIE_${STEP}"
+BASE_MODEL="llava-hf/llava-1.5-7b-hf"
+ADAPTER_DIR="LVLM_RUMIE/saves/llava1.5_UMIE/checkpoint-${STEP}"
+MERGED_DIR="LVLM_RUMIE/merge_output/llava1.5_UMIE_${STEP}"
 
-TEMPLATE="qwen2_vl"
-TEMP=0.3
+TEMPLATE="llava"
+TEMP=0.5
 
 EVAL_PY="LVLM_RUMIE/evaluate.py"
 METRIC_PY="LVLM_RUMIE/get_metric.py"
 
 # 结果根目录
-RES_ROOT="LVLM_RUMIE/results/roubust_results/Qwen2.5_UMIE_${STEP}"
+RES_ROOT="LVLM_RUMIE/results/roubust_results/llava1.5_UMIE_${STEP}"
 
 # ====== dataset keys（需与你的 dataset_info.json 一致） ======
 # --- MNER ---
@@ -29,11 +29,9 @@ DATASETS_MNER=(
   "mner_rule_vision_gaussian_noise"
   "mner_rule_vision_jpeg_compression"
   "mner_rule_vision_low_resolusion"
-  "mner_rule_vision_Image_Side_Contradictory_Perturbation_clip"
   "mner_text_change_context"
   "mner_text_extend_sentence"
   "mner_text_replace_entity"
-  "mner_text_Text_Side_Contradictory_Perturbation"
 )
 
 # --- MRE ---
@@ -42,11 +40,8 @@ DATASETS_MRE=(
   "mre_rule_vision_gaussian_noise"
   "mre_rule_vision_jpeg_compression"
   "mre_rule_vision_low_resolusion"
-  "mre_rule_vision_Image_Side_Contradictory_Perturbation_clip"
-  "mre_text_change_context"
   "mre_text_extend_sentence"
   "mre_text_replace_triple"
-  "mre_text_Text_Side_Contradictory_Perturbation"
 )
 
 # --- MEE (m2e2) ---
@@ -55,10 +50,8 @@ DATASETS_MEE=(
   "mee_rule_vision_gaussian_noise"
   "mee_rule_vision_jpeg_compression"
   "mee_rule_vision_low_resolusion"
-  "mee_rule_vision_Image_Side_Contradictory_Perturbation_clip"
   "mee_text_change_context"
   "mee_text_extend_sentence"
-  "mee_text_Text_Side_Contradictory_Perturbation"
 )
 # =====================
 
@@ -81,7 +74,7 @@ run_eval () {
       --temperature "$TEMP" \
       --skip_special_tokens true
   else
-    CUDA_VISIBLE_DEVICES=${CUDA} DISABLE_VERSION_CHECK=1 python "$EVAL_PY" \
+    VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 CUDA_VISIBLE_DEVICES=${CUDA} DISABLE_VERSION_CHECK=1 python "$EVAL_PY" \
       --model_name_or_path "$MERGED_DIR" \
       --dataset "$dataset" \
       --template "$TEMPLATE" \
@@ -107,7 +100,7 @@ run_metric () {
 # ====== 1) merge model ======
 if [[ "$MERGE_FLAG" == true ]]; then
   echo "[MERGE] exporting merged model to: ${MERGED_DIR}"
-  DISABLE_VERSION_CHECK=1 CUDA_VISIBLE_DEVICES=${CUDA} llamafactory-cli export \
+  VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 DISABLE_VERSION_CHECK=1 CUDA_VISIBLE_DEVICES=${CUDA} llamafactory-cli export \
     --model_name_or_path "$BASE_MODEL" \
     --adapter_name_or_path "$ADAPTER_DIR" \
     --template "$TEMPLATE" \
@@ -125,10 +118,10 @@ fi
 # 并且对每个扰动，汇总一次三任务指标（若该任务存在该扰动）
 
 # 统一扰动列表（用于汇总）
-#PERTS_RULE_VISION=("color_shift" "gaussian_noise" "jpeg_compression" "low_resolusion" "Image_Side_Contradictory_Perturbation_clip")
-PERTS_RULE_VISION=("Image_Side_Contradictory_Perturbation_clip")
-#PERTS_TEXT=("change_context" "extend_sentence" "replace_entity" "replace_triple" "Text_Side_Contradictory_Perturbation")
-PERTS_TEXT=("Text_Side_Contradictory_Perturbation")
+PERTS_RULE_VISION=("color_shift" "gaussian_noise" "jpeg_compression" "low_resolusion")
+#PERTS_RULE_VISION=()
+PERTS_TEXT=("change_context" "extend_sentence" "replace_entity" "replace_triple")
+#PERTS_TEXT=("replace_entity" "replace_triple")
 # Helper: find dataset key from arrays
 find_dataset_key () {
   local target="$1"; shift

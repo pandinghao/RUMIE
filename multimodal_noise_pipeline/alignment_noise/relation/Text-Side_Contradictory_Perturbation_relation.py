@@ -1,10 +1,15 @@
-extend_sentence_relation_prompt = '''
-The above is a Relation Extraction data entry, where the "sentence" contains the sentence information, and the "relations" contains the relational triple information. \
-Now, you need to ensure that the original sentence remains unchanged while adding semantically related content at the end the sentence. \
-The additional content should not be too simplistic, and should not introduce new relational triple information. \
-Please output in the following format, without any additional content: {"sentence": "", "relations": []},  where "sentence" should be the expanded sentence and follow the original token list format, and "relations" should contain the original relational triple information.
+multimodal_decouple_text_prompt = '''The above is a Relation Extraction data entry, where "sentence" contains the textual description, \
+and the "relations" contains the relational triple information., and an image is implicitly associated with the sentence. \
+Now, you need to keep the original sentence unchanged, while adding additional textual content that is  \
+plausible aligned or potentially inconsistent with the visual scene at the end. \
+The added content should: \
+1. Not introduce new entity labels or entity types. \
+2. Not contradict the original entity labels explicitly.\
+3. Increase cross-modal ambiguity. \
+Remember to update the offsets as well. Offsets should be represented as a list of all tokens indices, not as a [start, end] span. \
+Please output in the following format, without any additional content: \
+{"sentence": "", "relations": []},  where "sentence" should be the expanded sentence and follow the original token list format, and "relations" should contain the original relational triple information.
 '''
-
 import openai
 import json
 from openai import OpenAI
@@ -14,14 +19,81 @@ from typing import List, Dict, Any, Optional
 import math
 import os
 import time
-import ast
 
 client = OpenAI(
                 api_key="sk-C1MM4tqRF6b3sJ26bmcUZAm8xGPTAybP1fI9vH6nnfTaCxYX",
                 base_url="http://35.164.11.19:3887/v1"
         )
-    
-def convert_mnre_merge_jsonl(
+
+IMAGE_ROOT = "datasets/MNRE-V2/mnre_image/img_org/test"
+from PIL import Image
+import io
+import math
+
+def _file_to_data_url_low_quality(
+    path: str,
+    max_side: int = 768,
+    max_pixels: int = 768 * 768,
+    jpeg_quality: int = 45
+) -> str:
+    """
+    Resize + JPEG compress to reduce payload/compute, then return data URL.
+    """
+    with Image.open(path) as img:
+        img = img.convert("RGB")
+        w, h = img.size
+
+        # 先按 max_side 缩放
+        scale_side = min(1.0, max_side / max(w, h))
+        # 再按 max_pixels 缩放
+        scale_px = min(1.0, math.sqrt(max_pixels / (w * h)))
+        scale = min(scale_side, scale_px)
+
+        if scale < 1.0:
+            new_w = max(1, int(w * scale))
+            new_h = max(1, int(h * scale))
+            img = img.resize((new_w, new_h), Image.BICUBIC)
+
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=jpeg_quality, optimize=True)
+        b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+
+    return f"data:image/jpeg;base64,{b64}"
+
+def build_multimodal_user_content(example_text: str, image_filenames: Optional[List[str]] = None, max_images: int = 4) -> List[Dict[str, Any]]:
+    """
+    Build OpenAI chat content list: text + up to max_images images.
+    """
+    content: List[Dict[str, Any]] = [{"type": "text", "text": example_text}]
+    if not image_filenames:
+        return content
+
+    # 防御：确保是 list
+    if not isinstance(image_filenames, list):
+        image_filenames = [str(image_filenames)]
+
+    for fn in image_filenames[:max_images]:
+        img_path = os.path.join(IMAGE_ROOT, fn)
+        if not os.path.exists(img_path):
+            print("不存在图片路径:",img_path)
+            # 如果数据里可能是相对路径/带子目录，也尝试直接 join
+            # 这里选择跳过不存在的图片，避免整个样本失败
+            continue
+        try:
+            data_url = _file_to_data_url_low_quality(
+                img_path,
+                max_side=768,          # 可调：512/768/1024
+                max_pixels=768*768,    # 可调：512*512 更省
+                jpeg_quality=45        # 可调：30-60，越低越省但越糊
+            )
+            content.append({"type": "image_url", "image_url": {"url": data_url}})
+        except Exception:
+            # 编码失败则跳过该图片
+            continue
+
+    return content
+
+def convert_relation_merge_jsonl(
     input_path: str = "/home/sda/pandinghao/RUMIE/data_process/processed_data/entity/twitter_merge/twitter_merge.jsonl",
 ) -> List[str]:
     """
@@ -37,7 +109,7 @@ def convert_mnre_merge_jsonl(
     - output_path: 若提供，则将转换结果逐行写入一个新的 jsonl 文件（每行一个字符串对应的 JSON 对象）。
     """
     results: List[str] = []
-    
+
     with open(input_path, "r", encoding="utf-8") as f_in:
         for line_no, line in enumerate(f_in, start=1):
             line = line.strip()
@@ -48,13 +120,22 @@ def convert_mnre_merge_jsonl(
                 obj = json.loads(line)
             except json.JSONDecodeError as e:
                 raise ValueError(f"第 {line_no} 行不是合法 JSON：{e}") from e
+
+            # sentence
+            if isinstance(obj.get("text"), str):
+                sentence = obj["text"]
+            elif isinstance(obj.get("tokens"), list):
+                sentence = " ".join(str(t) for t in obj["tokens"])
+            else:
+                sentence = ""
+
         
             #obj["sentence"] = sentence
             #obj["entities"] = entities
-            #new_obj = obj
+            new_obj = obj
 
             # 每条样本放到一个字符串里
-            results.append(obj)
+            results.append(new_obj)
             #results.append(json.dumps(new_obj, ensure_ascii=False))
 
     return results
@@ -74,19 +155,23 @@ def get_cot_data_from_api(data):
         max_retries = 10 
         base_sleep = 0.5 
         result_flag = True
+        user_text = example_data + multimodal_decouple_text_prompt
+        user_content = build_multimodal_user_content(
+            example_text=user_text,
+            image_filenames=entry.get("image_id", []),  # 关键：从 obj 里读 "image"
+            max_images=4
+        )
         for attempt in range(1, max_retries + 1):
             try:
                 completion = client.chat.completions.create(
-                    model="gpt-5.1-chat-latest",
+                    model="gpt-5.1",
                     messages=[
                         {
                             "role": "user",
-                            "content": [
-                                {"type": "text", "text": example_data + extend_sentence_relation_prompt},
-                            ]
+                            "content": user_content
                         }
                     ],
-                    temperature=0.5,
+                    temperature=0.8,
                     logprobs=True
                 )
                 response = completion.choices[0].message.content
@@ -151,16 +236,15 @@ if __name__ == "__main__":
     #file_path = "data/JMERE/V2/train.json"
     #output_file_path = "MH-ZS-JMERE/gpt-zero-result_V2/train_distill.jsonl"
     input_path = "data_process/processed_data/relation/MNRE-V2/test.fixed.jsonl"
-    output_file_path = "rumie_datasets/MNRE-V2/text_noise/extend_sentence/test.jsonl"
-    data = convert_mnre_merge_jsonl(input_path=input_path)
+    output_file_path = "rumie_datasets/MNRE-V2/alignment_noise/Text-Side_Contradictory_Perturbation/test.jsonl"
+    data = convert_relation_merge_jsonl(input_path=input_path)
     dir_path = os.path.dirname(output_file_path)
-
     fix_flag = False
     # 如果目录不存在，则递归创建
     if dir_path and not os.path.exists(dir_path):
         os.makedirs(dir_path, exist_ok=True)
     if fix_flag:
-        fix_data =  convert_mnre_merge_jsonl(input_path= "")
+        fix_data = convert_relation_merge_jsonl(input_path= "")
         new_data = []
         for index,line in enumerate(fix_data):
             if line == {}:

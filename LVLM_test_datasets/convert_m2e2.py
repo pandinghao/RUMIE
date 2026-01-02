@@ -51,12 +51,12 @@ def build_argparser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output_file",
-        default="LVLM_test_datasets/m2e2/test.json",
+        default="LVLM_test_datasets/m2e2/rule_vision_noise/Image-Side-Contradictory_Perturbation_clip/test.json",
         help="Output path for VOA-style json (default: %(default)s)"
     )
     parser.add_argument(
         "--image_base_dir",
-        default="datasets/m2e2/m2e2_rawdata/image/image",
+        default="rumie_datasets/m2e2/rule_vision_noise/Image-Side-Contradictory_Perturbation_clip",
         help="Base directory for images; image_id will be joined to this path (default: %(default)s)"
     )
     return parser
