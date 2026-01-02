@@ -35,4 +35,8 @@ LLaMA-Factory
 OpenGVLab/InternVL3_5-8B
 OpenGVLab/InternVL2_5-8B
 OpenGVLab/InternVL2_5-4B
+OpenGVLab/InternVL2_5-2B
+OpenGVLab/InternVL3_5-8B-hf
+OpenGVLab/InternVL3_5-4B-hf
+OpenGVLab/InternVL3_5-2B-hf
 openai/clip-vit-base-patch32

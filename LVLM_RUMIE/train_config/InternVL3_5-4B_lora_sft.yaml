@@ -1,5 +1,5 @@
 ### model
-model_name_or_path: OpenGVLab/InternVL3_5-8B-hf
+model_name_or_path: OpenGVLab/InternVL3_5-4B-hf
 trust_remote_code: true
 
 ### method
@@ -20,7 +20,7 @@ preprocessing_num_workers: 1
 dataloader_num_workers: 16
 
 ### output
-output_dir: LVLM_RUMIE/saves/InternVL3_5-8B_UMIE
+output_dir: LVLM_RUMIE/saves/InternVL3_5-4B_UMIE
 logging_steps: 10
 save_steps: 38211
 plot_loss: true
