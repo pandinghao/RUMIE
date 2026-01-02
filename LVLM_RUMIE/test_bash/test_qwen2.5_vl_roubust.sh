@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # ====== 配置区 ======
-STEP=114633
+STEP=76422
 CUDA=0
-MERGE_FLAG=false
+MERGE_FLAG=true
 MNER_FLAG=true
 MRE_FLAG=true
 MEE_FLAG=true
@@ -14,7 +14,7 @@ ADAPTER_DIR="LVLM_RUMIE/saves/Qwen2.5_UMIE/checkpoint-${STEP}"
 MERGED_DIR="LVLM_RUMIE/merge_output/Qwen2.5_UMIE_${STEP}"
 
 TEMPLATE="qwen2_vl"
-TEMP=0.3
+TEMP=0.5
 
 EVAL_PY="LVLM_RUMIE/evaluate.py"
 METRIC_PY="LVLM_RUMIE/get_metric.py"
@@ -43,7 +43,6 @@ DATASETS_MRE=(
   "mre_rule_vision_jpeg_compression"
   "mre_rule_vision_low_resolusion"
   "mre_rule_vision_Image_Side_Contradictory_Perturbation_clip"
-  "mre_text_change_context"
   "mre_text_extend_sentence"
   "mre_text_replace_triple"
   "mre_text_Text_Side_Contradictory_Perturbation"
@@ -125,10 +124,10 @@ fi
 # 并且对每个扰动，汇总一次三任务指标（若该任务存在该扰动）
 
 # 统一扰动列表（用于汇总）
-#PERTS_RULE_VISION=("color_shift" "gaussian_noise" "jpeg_compression" "low_resolusion" "Image_Side_Contradictory_Perturbation_clip")
-PERTS_RULE_VISION=("Image_Side_Contradictory_Perturbation_clip")
-#PERTS_TEXT=("change_context" "extend_sentence" "replace_entity" "replace_triple" "Text_Side_Contradictory_Perturbation")
-PERTS_TEXT=("Text_Side_Contradictory_Perturbation")
+PERTS_RULE_VISION=("color_shift" "gaussian_noise" "jpeg_compression" "low_resolusion" "Image_Side_Contradictory_Perturbation_clip")
+#PERTS_RULE_VISION=("Image_Side_Contradictory_Perturbation_clip")
+PERTS_TEXT=("change_context" "extend_sentence" "replace_entity" "replace_triple" "Text_Side_Contradictory_Perturbation")
+#PERTS_TEXT=("Text_Side_Contradictory_Perturbation")
 # Helper: find dataset key from arrays
 find_dataset_key () {
   local target="$1"; shift

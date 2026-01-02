@@ -9,22 +9,22 @@ MNER_FLAG=true
 MRE_FLAG=true
 MEE_FLAG=true
 
-BASE_MODEL="Qwen/Qwen3-VL-4B-Instruct"
-ADAPTER_DIR="LVLM_RUMIE/saves/Qwen3_VL_4B_UMIE/checkpoint-${STEP}"
-MERGED_DIR="LVLM_RUMIE/merge_output/Qwen3_VL_4B_UMIE_${STEP}"
+BASE_MODEL="Qwen/Qwen3-VL-2B-Instruct"
+ADAPTER_DIR="LVLM_RUMIE/saves/Qwen3_VL_2B_UMIE/checkpoint-${STEP}"
+MERGED_DIR="LVLM_RUMIE/merge_output/Qwen3_VL_2B_UMIE_${STEP}"
 
 TEMPLATE="qwen3_vl"
-TEMP=0.3
+TEMP=0.5
 
 EVAL_PY="LVLM_RUMIE/evaluate.py"
 METRIC_PY="LVLM_RUMIE/get_metric.py"
 
 # 结果根目录
-RES_ROOT="LVLM_RUMIE/results/roubust_results/Qwen3_VL_4B_UMIE_${STEP}"
+RES_ROOT="LVLM_RUMIE/results/roubust_results/Qwen3_VL_2B_UMIE_${STEP}"
 
 # ====== dataset keys（需与你的 dataset_info.json 一致） ======
 # --- MNER ---
-# --- MNER ---
+
 DATASETS_MNER=(
   "mner_rule_vision_color_shift"
   "mner_rule_vision_gaussian_noise"
@@ -60,8 +60,6 @@ DATASETS_MEE=(
   "mee_text_extend_sentence"
   "mee_text_Text_Side_Contradictory_Perturbation"
 )
-# =====================
-
 mkdir -p "$RES_ROOT"
 
 run_eval () {
@@ -125,10 +123,10 @@ fi
 # 并且对每个扰动，汇总一次三任务指标（若该任务存在该扰动）
 
 # 统一扰动列表（用于汇总）
-#PERTS_RULE_VISION=("color_shift" "gaussian_noise" "jpeg_compression" "low_resolusion" "Image_Side_Contradictory_Perturbation_clip")
-PERTS_RULE_VISION=("Image_Side_Contradictory_Perturbation_clip")
-#PERTS_TEXT=("change_context" "extend_sentence" "replace_entity" "replace_triple" "Text_Side_Contradictory_Perturbation")
-PERTS_TEXT=("Text_Side_Contradictory_Perturbation")
+PERTS_RULE_VISION=("color_shift" "gaussian_noise" "jpeg_compression" "low_resolusion" "Image_Side_Contradictory_Perturbation_clip")
+#PERTS_RULE_VISION=("Image_Side_Contradictory_Perturbation_clip")
+PERTS_TEXT=("change_context" "extend_sentence" "replace_entity" "replace_triple" "Text_Side_Contradictory_Perturbation")
+#PERTS_TEXT=("Text_Side_Contradictory_Perturbation")
 #PERTS_TEXT=("replace_entity" "replace_triple")
 # Helper: find dataset key from arrays
 find_dataset_key () {

@@ -197,7 +197,7 @@ def vllm_infer(
         "pipeline_parallel_size": pipeline_parallel_size,
         "disable_log_stats": True,
         "enable_lora": model_args.adapter_name_or_path is not None,
-        "gpu_memory_utilization": 0.8,
+        "gpu_memory_utilization": 0.9,
     }
 
     if isinstance(model_args.vllm_config, dict):
