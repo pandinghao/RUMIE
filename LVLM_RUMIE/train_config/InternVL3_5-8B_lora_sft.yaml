@@ -15,20 +15,20 @@ dataset: UMIE_train
 template: intern_vl
 cutoff_len: 4096
 max_samples: 10000000
-overwrite_cache: true
+overwrite_cache: false
 preprocessing_num_workers: 1
 dataloader_num_workers: 16
 
 ### output
 output_dir: LVLM_RUMIE/saves/InternVL3_5-8B_UMIE
 logging_steps: 10
-save_steps: 38211
+save_steps: 9553
 plot_loss: true
 overwrite_output_dir: true
 save_only_model: false
 
 ### train
-per_device_train_batch_size: 1
+per_device_train_batch_size: 2
 gradient_accumulation_steps: 1
 learning_rate: 2.0e-5
 num_train_epochs: 10
