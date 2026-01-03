@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ====== 配置区 ======
 STEP=76422
-CUDA=1
+CUDA=0
 MERGE_FLAG=true
 MNER_FLAG=true
 MRE_FLAG=true
@@ -71,7 +71,7 @@ run_eval () {
   mkdir -p "$(dirname "$out_file")"
 
   if [[ "$task" == "mee" ]]; then
-    VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 DISABLE_VERSION_CHECK=1 python "$EVAL_PY" \
+    CUDA_VISIBLE_DEVICES=${CUDA} VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 DISABLE_VERSION_CHECK=1 python "$EVAL_PY" \
       --model_name_or_path "$MERGED_DIR" \
       --dataset "$dataset" \
       --template "$TEMPLATE" \

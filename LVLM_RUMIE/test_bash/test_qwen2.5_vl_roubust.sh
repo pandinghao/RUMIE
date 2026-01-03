@@ -4,7 +4,7 @@ set -euo pipefail
 # ====== 配置区 ======
 STEP=76422
 CUDA=0
-MERGE_FLAG=true
+MERGE_FLAG=false
 MNER_FLAG=true
 MRE_FLAG=true
 MEE_FLAG=true
@@ -72,7 +72,7 @@ run_eval () {
   mkdir -p "$(dirname "$out_file")"
 
   if [[ "$task" == "mee" ]]; then
-    VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 DISABLE_VERSION_CHECK=1 python "$EVAL_PY" \
+    CUDA_VISIBLE_DEVICES=${CUDA} VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 DISABLE_VERSION_CHECK=1 python "$EVAL_PY" \
       --model_name_or_path "$MERGED_DIR" \
       --dataset "$dataset" \
       --template "$TEMPLATE" \
@@ -125,7 +125,7 @@ fi
 
 # 统一扰动列表（用于汇总）
 PERTS_RULE_VISION=("color_shift" "gaussian_noise" "jpeg_compression" "low_resolusion" "Image_Side_Contradictory_Perturbation_clip")
-#PERTS_RULE_VISION=("Image_Side_Contradictory_Perturbation_clip")
+#PERTS_RULE_VISION=()
 PERTS_TEXT=("change_context" "extend_sentence" "replace_entity" "replace_triple" "Text_Side_Contradictory_Perturbation")
 #PERTS_TEXT=("Text_Side_Contradictory_Perturbation")
 # Helper: find dataset key from arrays

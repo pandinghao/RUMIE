@@ -73,7 +73,7 @@ run_eval () {
   mkdir -p "$(dirname "$out_file")"
 
   if [[ "$task" == "mee" ]]; then
-    VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 DISABLE_VERSION_CHECK=1 python "$EVAL_PY" \
+    CUDA_VISIBLE_DEVICES=${CUDA} VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 DISABLE_VERSION_CHECK=1 python "$EVAL_PY" \
       --model_name_or_path "$MERGED_DIR" \
       --dataset "$dataset" \
       --template "$TEMPLATE" \
@@ -125,10 +125,10 @@ fi
 # 并且对每个扰动，汇总一次三任务指标（若该任务存在该扰动）
 
 # 统一扰动列表（用于汇总）
-#PERTS_RULE_VISION=("color_shift" "gaussian_noise" "jpeg_compression" "low_resolusion" "Image_Side_Contradictory_Perturbation_clip")
-PERTS_RULE_VISION=("Image_Side_Contradictory_Perturbation_clip")
-#PERTS_TEXT=("change_context" "extend_sentence" "replace_entity" "replace_triple" "Text_Side_Contradictory_Perturbation")
-PERTS_TEXT=("Text_Side_Contradictory_Perturbation")
+PERTS_RULE_VISION=("color_shift" "gaussian_noise" "jpeg_compression" "low_resolusion" "Image_Side_Contradictory_Perturbation_clip")
+#PERTS_RULE_VISION=("Image_Side_Contradictory_Perturbation_clip")
+PERTS_TEXT=("change_context" "extend_sentence" "replace_entity" "replace_triple" "Text_Side_Contradictory_Perturbation")
+#PERTS_TEXT=("Text_Side_Contradictory_Perturbation")
 #PERTS_TEXT=("replace_entity" "replace_triple")
 # Helper: find dataset key from arrays
 find_dataset_key () {
