@@ -2,25 +2,25 @@
 set -euo pipefail
 
 # ====== 配置区 ======
-STEP=114633
+STEP=19106
 CUDA=0
-MERGE_FLAG=false
+MERGE_FLAG=true
 MNER_FLAG=true
 MRE_FLAG=true
 MEE_FLAG=true
 
-BASE_MODEL="llava-hf/llava-1.5-7b-hf"
-ADAPTER_DIR="LVLM_RUMIE/saves/llava1.5_UMIE/checkpoint-${STEP}"
-MERGED_DIR="LVLM_RUMIE/merge_output/llava1.5_UMIE_${STEP}"
+BASE_MODEL="OpenGVLab/InternVL3_5-2B-hf"
+ADAPTER_DIR="LVLM_RUMIE/saves/InternVL3_5-2B_UMIE/checkpoint-${STEP}"
+MERGED_DIR="LVLM_RUMIE/merge_output/InternVL3_5-2B_UMIE_${STEP}"
 
-TEMPLATE="llava"
+TEMPLATE="intern_vl"
 TEMP=0.5
 
 EVAL_PY="LVLM_RUMIE/evaluate.py"
 METRIC_PY="LVLM_RUMIE/get_metric.py"
 
 # 结果根目录
-RES_ROOT="LVLM_RUMIE/results/roubust_results/llava1.5_UMIE_${STEP}"
+RES_ROOT="LVLM_RUMIE/results/roubust_results/InternVL3_5-2B_UMIE_${STEP}"
 
 # ====== dataset keys（需与你的 dataset_info.json 一致） ======
 # --- MNER ---
@@ -61,9 +61,6 @@ DATASETS_MEE=(
   "mee_text_Text_Side_Contradictory_Perturbation"
 )
 mkdir -p "$RES_ROOT"
-# =====================
-
-mkdir -p "$RES_ROOT"
 
 run_eval () {
   local task="$1"       # mner / mre / mee
@@ -74,7 +71,7 @@ run_eval () {
   mkdir -p "$(dirname "$out_file")"
 
   if [[ "$task" == "mee" ]]; then
-    VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 DISABLE_VERSION_CHECK=1 python "$EVAL_PY" \
+    CUDA_VISIBLE_DEVICES=${CUDA} VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 DISABLE_VERSION_CHECK=1 python "$EVAL_PY" \
       --model_name_or_path "$MERGED_DIR" \
       --dataset "$dataset" \
       --template "$TEMPLATE" \
@@ -82,7 +79,7 @@ run_eval () {
       --temperature "$TEMP" \
       --skip_special_tokens true
   else
-    VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 CUDA_VISIBLE_DEVICES=${CUDA} DISABLE_VERSION_CHECK=1 python "$EVAL_PY" \
+    CUDA_VISIBLE_DEVICES=${CUDA} DISABLE_VERSION_CHECK=1 python "$EVAL_PY" \
       --model_name_or_path "$MERGED_DIR" \
       --dataset "$dataset" \
       --template "$TEMPLATE" \
@@ -108,7 +105,7 @@ run_metric () {
 # ====== 1) merge model ======
 if [[ "$MERGE_FLAG" == true ]]; then
   echo "[MERGE] exporting merged model to: ${MERGED_DIR}"
-  VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 DISABLE_VERSION_CHECK=1 CUDA_VISIBLE_DEVICES=${CUDA} llamafactory-cli export \
+  DISABLE_VERSION_CHECK=1 CUDA_VISIBLE_DEVICES=${CUDA} llamafactory-cli export \
     --model_name_or_path "$BASE_MODEL" \
     --adapter_name_or_path "$ADAPTER_DIR" \
     --template "$TEMPLATE" \

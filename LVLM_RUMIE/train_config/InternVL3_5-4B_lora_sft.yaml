@@ -22,13 +22,13 @@ dataloader_num_workers: 16
 ### output
 output_dir: LVLM_RUMIE/saves/InternVL3_5-4B_UMIE
 logging_steps: 10
-save_steps: 38211
+save_steps: 9553
 plot_loss: true
 overwrite_output_dir: true
 save_only_model: false
 
 ### train
-per_device_train_batch_size: 1
+per_device_train_batch_size: 4
 gradient_accumulation_steps: 1
 learning_rate: 2.0e-5
 num_train_epochs: 10
