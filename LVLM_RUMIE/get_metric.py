@@ -4,7 +4,17 @@ import argparse
 from typing import Any, Dict, List, Tuple, Optional, Set
 import os
 
-
+def _is_none_relation(rel: Any) -> bool:
+    """
+    Return True if rel indicates 'no relation' / none.
+    """
+    if rel is None:
+        return True
+    r = _norm_rel(rel)
+    return r in {
+        "", "none", "no_relation", "no relation", "norelation",
+        "na", "n/a", "null", "nil", "other", "unknown"
+    }
 # ----------------------------
 # Save
 # ----------------------------
@@ -278,7 +288,10 @@ def parse_re(obj: Any) -> Tuple[Set[Tuple], bool]:
                     h = parts[0]
                     r = parts[1]
                     t = parts[2]
-                    rels.add((_lower(h), _lower(t), _norm_rel(r)))
+                    nr = _norm_rel(r)
+                    if _is_none_relation(nr):
+                        continue
+                    rels.add((_lower(h), _lower(t), nr))
             else:
                 # stricter: ignore noisy fragments without <spot>
                 continue
@@ -288,6 +301,8 @@ def parse_re(obj: Any) -> Tuple[Set[Tuple], bool]:
         for it in obj:
             if isinstance(it, dict):
                 rel = it.get("relation", it.get("rel", it.get("r", "none")))
+                if _is_none_relation(rel):
+                    continue
                 head = it.get("head", it.get("h", {}))
                 tail = it.get("tail", it.get("t", {}))
 
@@ -308,16 +323,25 @@ def parse_re(obj: Any) -> Tuple[Set[Tuple], bool]:
                 t_text = tail.get("text", tail.get("name", tail)) if isinstance(tail, dict) else tail
                 h_type = head.get("type", "unknown") if isinstance(head, dict) else "unknown"
                 t_type = tail.get("type", "unknown") if isinstance(tail, dict) else "unknown"
-                rels.add((_lower(h_text), _norm_type(h_type), _lower(t_text), _norm_type(t_type), _norm_rel(rel)))
+                rel_norm = _norm_rel(rel)
+                if _is_none_relation(rel_norm):
+                    continue
+                rels.add((_lower(h_text), _norm_type(h_type), _lower(t_text), _norm_type(t_type), rel_norm))
 
             elif isinstance(it, (list, tuple)):
                 if len(it) == 5:
                     e1, t1, e2, t2, r = it
-                    rels.add((_lower(e1), _norm_type(t1), _lower(e2), _norm_type(t2), _norm_rel(r)))
+                    rel_norm = _norm_rel(r)
+                    if _is_none_relation(rel_norm):
+                        continue
+                    rels.add((_lower(e1), _norm_type(t1), _lower(e2), _norm_type(t2), rel_norm))
+                
                 elif len(it) == 3:
                     h, r, t = it
-                    rels.add((_lower(h), _lower(t), _norm_rel(r)))
-
+                    rel_norm = _norm_rel(r)
+                    if _is_none_relation(rel_norm):
+                        continue
+                    rels.add((_lower(h_text), _norm_type(h_type), _lower(t_text), _norm_type(t_type), rel_norm))
             elif isinstance(it, str):
                 ln = _clean_model_text(it)
                 if not ln:
